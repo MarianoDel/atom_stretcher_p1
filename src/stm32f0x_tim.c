@@ -21,13 +21,7 @@
 #include "uart.h"
 #include "hard.h"
 
-#ifndef DATALOGGER
-#ifndef PULSE_GENERATOR
-#include "dmx_transceiver.h"
-//#include "mqtt_wifi_interface.h"
-#include "MQTT_SPWF_interface.h"
-#endif
-#endif
+
 
 //--- VARIABLES EXTERNAS ---//
 extern volatile unsigned char timer_1seg;
@@ -269,15 +263,9 @@ void TIM_15_Init (void)
 
 void TIM15_IRQHandler (void)	//1ms
 {
-#ifndef DATALOGGER
-#ifndef PULSE_GENERATOR
-	SysTickIntHandler ();
-#endif
-#endif
-
-	if (TIM15->SR & 0x01)
-		//bajar flag
-		TIM15->SR = 0x00;
+    if (TIM15->SR & 0x01)
+        //bajar flag
+        TIM15->SR = 0x00;
 }
 
 
