@@ -199,6 +199,34 @@ int main(void)
     Usart1Send((char *) (const char *) "SW Ver: 1.0\n");
 // #endif
 
+    // //prueba loop en usart1 (PC)
+    // while (1)
+    // {
+    //     if (usart1_have_data)
+    //     {
+    //         usart1_have_data = 0;
+    //         bytes_readed = ReadUsart1Buffer(s_to_senda, sizeof(s_to_senda));
+
+    //         if ((bytes_readed + 1) < sizeof(s_to_senda))
+    //         {
+    //             *(s_to_senda + bytes_readed - 1) = '\n';
+    //             *(s_to_senda + bytes_readed) = '\0';
+    //             timer_standby = 1000;
+    //         }
+
+    //         if (LED)
+    //             LED_OFF;
+    //         else
+    //             LED_ON;
+    //     }
+
+    //     if ((!timer_standby) && (bytes_readed > 0))
+    //     {
+    //         bytes_readed = 0;
+    //         Usart1Send(s_to_senda);
+    //     }
+    // }
+    
     while (1)
     {
         if (usart2_have_data)
@@ -208,8 +236,8 @@ int main(void)
 
             if ((bytes_readed + 1) < sizeof(s_to_sendb))
             {
-                *(s_to_sendb + bytes_readed) = '\n';
-                *(s_to_sendb + bytes_readed + 1) = '\0';
+                *(s_to_sendb + bytes_readed - 1) = '\n';
+                *(s_to_sendb + bytes_readed) = '\0';
                 Usart1Send(s_to_sendb);
             }
             
@@ -226,8 +254,8 @@ int main(void)
 
             if ((bytes_readed + 1) < sizeof(s_to_senda))
             {
-                *(s_to_senda + bytes_readed) = '\n';
-                *(s_to_senda + bytes_readed + 1) = '\0';
+                *(s_to_senda + bytes_readed - 1) = '\n';
+                *(s_to_senda + bytes_readed) = '\0';
                 Usart2Send(s_to_senda);
             }
 

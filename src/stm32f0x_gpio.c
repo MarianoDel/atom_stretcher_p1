@@ -90,10 +90,16 @@ void GPIO_Config (void)
     GPIOA->OSPEEDR = temp;
 
     temp = GPIOA->PUPDR;	//2 bits por pin
-    temp &= 0xFFFFF3FF;
 #ifdef DATALOGGER
+    temp &= 0xFFFCFFFF;
     temp |= 0x00020000;		//PA8 pull-down
-#else
+#endif
+#ifdef STRETCHER_P1
+    temp &= 0xFFFFFF3F;
+    temp |= 0x00000040;		//PA3 pull up RX USART2
+#endif
+#ifdef PULSE_GENERATOR
+    temp &= 0xFFFFF3FF;
     temp |= 0x00000400;		//PA5 pull up
 #endif
     GPIOA->PUPDR = temp;

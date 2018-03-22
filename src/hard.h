@@ -23,8 +23,9 @@
 #define STRETCHER_P1
 
 //-------- Hardware resources for Type of Program ----------------
-
-
+#ifdef STRETCHER_P1
+#define USART_RX_PULL_UP    //se usa para comunicacion paralelo con las placas de canales
+#endif
 
 //-------- End Of Defines For Configuration ------
 
