@@ -20,7 +20,8 @@
 //-------- Type of Program ----------------
 // #define DATALOGGER
 // #define PULSE_GENERATOR
-#define STRETCHER_P1
+// #define STRETCHER_P1
+#define STRETCHER_P1_LIKE_F103
 
 //-------- Hardware resources for Type of Program ----------------
 #ifdef STRETCHER_P1

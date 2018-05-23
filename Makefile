@@ -110,12 +110,16 @@ SRC += ./src/adc.c
 SRC += ./src/uart.c
 SRC += ./src/flash_program.c
 SRC += ./src/dsp.c
+SRC += ./src/hard.c
+#modulos de STRETCHER_P1_LIKE_F103
+SRC += ./src/comms_from_power.c
+SRC += ./src/comms_from_rasp.c
+SRC += ./src/treatment.c
 #modulos de STRETCHER_P1
 #SRC += ./src/comm.c
 #modulos de PULSE_GENERATOR
 #SRC += ./src/lcd.c
 #SRC += ./src/main_menu.c
-SRC += ./src/hard.c
 # SRC += ./src/programs_functions.c
 ## System Support
 #SRC += ./cmsis_boot/system_stm32f0xx.c

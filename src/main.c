@@ -28,23 +28,36 @@
 #include "adc.h"
 #include "flash_program.h"
 
+//---- Config Include ----//
+#ifdef STRETCHER_P1_LIKE_F103
+#include "comms.h"
+#include "comms_from_power.h"
+#include "comms_from_rasp.h"
+#include "treatment.h"
+#endif
+
 
 //--- VARIABLES EXTERNAS ---//
 volatile unsigned char timer_1seg = 0;
-
 volatile unsigned short timer_led_comm = 0;
 volatile unsigned short timer_for_cat_switch = 0;
 volatile unsigned short timer_for_cat_display = 0;
-
-volatile unsigned short wait_ms_var = 0;
-
 unsigned char new_ldr_sample;
+
+#ifdef STRETCHER_P1_LIKE_F103
+unsigned short comms_messages = 0;
+#endif
 
 // ------- Externals del Puerto serie  -------
 volatile unsigned char usart1_have_data = 0;
 volatile unsigned char usart2_have_data = 0;
 
 // ------- Externals de los timers -------
+#ifdef STRETCHER_P1_LIKE_F103
+volatile unsigned short comms_timeout = 0;
+#endif
+
+volatile unsigned short wait_ms_var = 0;
 //volatile unsigned short prog_timer = 0;
 //volatile unsigned short mainmenu_timer = 0;
 volatile unsigned short show_select_timer = 0;
@@ -90,6 +103,13 @@ volatile unsigned short timer_standby;
 volatile unsigned char filter_timer;
 
 
+#ifdef STRETCHER_P1_LIKE_F103
+volatile unsigned short secs_in_treatment = 0;
+volatile unsigned short millis = 0;
+unsigned short secs_end_treatment;
+unsigned short secs_elapsed_up_to_now;
+#endif
+
 // ------- de los filtros ADC -------
 #ifdef DATALOGGER
 unsigned short v_adc0 [DATALOGGER_FILTER];
@@ -132,7 +152,7 @@ int main(void)
     unsigned char i,ii;
     unsigned char bytes_remain, bytes_readed, need_ack = 0;
     unsigned short local_meas, local_meas_last;
-    unsigned char main_state = 0;
+
 
 
 #ifdef DATALOGGER
@@ -149,6 +169,10 @@ int main(void)
     char s_to_sendb [100];
 #endif
 
+#ifdef STRETCHER_P1_LIKE_F103
+    treatment_t main_state = TREATMENT_STANDBY;
+#endif
+    
     parameters_typedef * p_mem_init;
     //!< At this stage the microcontroller clock setting is already configured,
     //   this is done through SystemInit() function which is called from startup
@@ -278,6 +302,154 @@ int main(void)
 #endif    //end of Stretcher
 //------- FIN PROGRAMA P1 STRETCHER -----//    
 
+//------- PROGRAMA P1 STRETCHER -----//
+#ifdef STRETCHER_P1_LIKE_F103
+    
+    //---- Programa Principal ----------
+
+    //--- PRUEBA DISPLAY LCD ---
+    EXTIOff ();
+
+    //TODO: enviar tipo de programa al puerto serie    
+    USART2Config();
+    USART1Config();
+    Wait_ms(1000);
+
+// #ifdef STRETCHER_P1
+    Usart1Send((char *) (const char *) "\r\nKirno Stretcher over P1 like F103\r\n");
+    Usart1Send((char *) (const char *) "HW Ver: 1.3\n");
+    Usart1Send((char *) (const char *) "SW Ver: 1.0\n");
+// #endif
+    
+    while (1)
+    {
+        switch (main_state)
+        {
+            case TREATMENT_STANDBY:
+
+                if (comms_messages & COMM_CONF_CHANGE)
+                {
+                    comms_messages &= ~COMM_CONF_CHANGE;
+                    if (TreatmentAssertParams() == resp_ok)    //si tengo todo lo envio
+                        PowerSendConf();                        
+                }
+
+                if (comms_messages & COMM_START_TREAT)
+                {
+                    //me piden por el puerto que arranque el tratamiento
+                    comms_messages &= ~COMM_START_TREAT;
+                    if (TreatmentAssertParams() == resp_error)
+                    {
+                        RPI_Send("ERROR\r\n");
+                    }
+                    else
+                    {
+                        RPI_Send("OK\r\n");
+                        PowerSendStart();
+                        main_state = TREATMENT_STARTING;                        
+                    }
+                }
+                break;
+
+            case TREATMENT_STARTING:
+                secs_end_treatment = TreatmentGetTime();
+                secs_in_treatment = 1;    //con 1 arranca el timer
+                secs_elapsed_up_to_now = 0;
+                main_state = TREATMENT_RUNNING;
+                break;
+
+            case TREATMENT_RUNNING:
+
+                if (comms_messages & COMM_PAUSE_TREAT)
+                {
+                    comms_messages &= ~COMM_PAUSE_TREAT;
+                    RPI_Send("OK\r\n");
+                    PowerSendStop();
+                    main_state = TREATMENT_PAUSED;
+                    secs_elapsed_up_to_now = secs_in_treatment;
+                }
+
+                if (comms_messages & COMM_STOP_TREAT)
+                {
+                    comms_messages &= ~COMM_STOP_TREAT;
+                    //termine el tratamiento
+                    RPI_Send("OK\r\n");
+                    PowerSendStop();
+                    main_state = TREATMENT_STOPPING;
+                }
+                
+                if (secs_in_treatment >= secs_end_treatment)
+                {
+                    //termine el tratamiento
+                    // comms_messages &= ~COMM_STOP_TREAT;                 
+                    PowerSendStop();
+                    main_state = TREATMENT_STOPPING;
+                }
+
+                if ((comms_messages & COMM_ERROR_OVERCURRENT) ||
+                    (comms_messages & COMM_ERROR_NO_CURRENT) ||
+                    (comms_messages & COMM_ERROR_SOFT_OVERCURRENT) ||
+                    (comms_messages & COMM_ERROR_OVERTEMP) ||
+                    (comms_messages & COMM_NO_COMM_CH1) ||
+                    (comms_messages & COMM_NO_COMM_CH2) ||
+                    (comms_messages & COMM_NO_COMM_CH3))                    
+                {
+                    PowerSendStop();
+                    while (comms_messages)
+                    {
+                        RaspBerry_Report_Errors(&comms_messages);
+                    }
+                    main_state = TREATMENT_WITH_ERRORS;
+                }
+                break;
+
+            case TREATMENT_PAUSED:
+
+                if (comms_messages & COMM_START_TREAT)
+                {
+                    comms_messages &= ~COMM_START_TREAT;
+                    secs_in_treatment = secs_elapsed_up_to_now;
+                    RPI_Send("OK\r\n");
+                    PowerSendStart();
+                    main_state = TREATMENT_RUNNING;
+                }
+
+                if (comms_messages & COMM_STOP_TREAT)
+                {
+                    //estaba en pausa y me mandaron stop
+                    comms_messages &= ~COMM_STOP_TREAT;
+                    RPI_Send("OK\r\n");
+                    PowerSendStop();
+                    main_state = TREATMENT_STOPPING;
+                }                
+                break;
+                
+            case TREATMENT_STOPPING:
+                main_state = TREATMENT_STANDBY;
+                break;
+
+            case TREATMENT_WITH_ERRORS:
+
+                break;
+
+            default:
+                main_state = TREATMENT_STANDBY;
+                break;
+        }            
+
+        
+        //reviso comunicacion con raspberry
+        UpdateRaspberryMessages();
+
+        //reviso comunicacion con potencias
+        UpdatePowerMessages();
+    }
+    //---- Fin Programa Pricipal ----------
+#endif    //end of Stretcher
+//------- FIN PROGRAMA P1 STRETCHER_LIKE_F103 -----//    
+
+
+    
 #ifdef DATALOGGER
     //ADC Configuration
     AdcConfig();
@@ -531,18 +703,33 @@ int main(void)
 
 void TimingDelay_Decrement(void)
 {
-	if (wait_ms_var)
-		wait_ms_var--;
+    if (wait_ms_var)
+        wait_ms_var--;
 
 //	if (display_timer)
 //		display_timer--;
 
-	if (timer_standby)
-		timer_standby--;
+    if (timer_standby)
+        timer_standby--;
 
-	if (switches_timer)
-		switches_timer--;
+    if (switches_timer)
+        switches_timer--;
 
+#ifdef STRETCHER_P1_LIKE_F103
+    if (comms_timeout)
+        comms_timeout--;
+    
+    if (secs_in_treatment)
+    {
+        if (millis < 1000)
+            millis++;
+        else
+        {
+            secs_in_treatment++;
+            millis = 0;
+        }
+    }
+#endif
 
 }
 
