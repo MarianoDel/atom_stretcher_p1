@@ -25,19 +25,19 @@
 extern volatile unsigned char power_have_data;
 extern volatile unsigned short comms_timeout;
 extern unsigned short comms_messages;
-extern unsigned char it_was_feedback_ch1;
-extern unsigned char it_was_feedback_ch2;
-extern unsigned char it_was_feedback_ch3;
+
+
 
 
 
 /* Globals ------------------------------------------------------------------*/
 char local_power_buff [SIZEOF_RXDATA];
 
+unsigned char it_was_feedback_ch;
 unsigned char error_counter_ch1 = 0;
 unsigned char error_counter_ch2 = 0;
 unsigned char error_counter_ch3 = 0;
-comm_state_t comm_state = ASK_CH1;
+comm_state_t power_comm_state = ASK_CH1;
 
 
 //estos son los mismos que en stretcher_F030
@@ -154,75 +154,83 @@ static void Power_Messages (char * msg)
     {
         comms_messages |= COMM_ERROR_OVERTEMP;
     }
+
+    // sprintf(b, "Manager status: %d\n", GetTreatmentState());
+    //TODO: puede estar clavado en error, despues revisar
+    else if (!strncmp(msg, (const char *)"Manager status: ", (sizeof("Manager status: ") - 1)))
+    {
+        it_was_feedback_ch = 1;
+    }
 }
 
-void CommunicationStack (void)
+void PowerCommunicationStackReset (void)
+{
+    error_counter_ch1 = 0;
+    error_counter_ch2 = 0;
+    error_counter_ch3 = 0;
+}
+
+void PowerCommunicationStack (void)
 {   
-    switch (comm_state)
+    switch (power_comm_state)
     {
         case ASK_CH1:
+            it_was_feedback_ch = 0;
             Power_Send((const char *) "ch1 status\n");
-            comms_timeout = 100;
-            comm_state++;
+            comms_timeout = POWER_COMMS_TT;
+            power_comm_state++;
             break;
 
         case WAIT_ANSWER_CH1:
-            //agrandar falta de comm
-            if (it_was_feedback_ch1)
-            {
-                it_was_feedback_ch1 = 0;
-                error_counter_ch1 = 0;
-                comm_state++;
-            }
-            
+            //agrandar falta de comm            
             if (!comms_timeout)
             {
-                error_counter_ch1++;
-                comm_state++;
+                if (it_was_feedback_ch)
+                    error_counter_ch1 = 0;
+                else
+                    error_counter_ch1++;
+
+                power_comm_state++;
             }            
             break;
 
         case ASK_CH2:
+            it_was_feedback_ch = 0;            
             Power_Send((const char *) "ch2 status\n");
-            comms_timeout = 100;
-            comm_state++;            
+            comms_timeout = POWER_COMMS_TT;
+            power_comm_state++;            
             break;
 
         case WAIT_ANSWER_CH2:
             //agrandar falta de comm
-            if (it_was_feedback_ch2)
-            {
-                it_was_feedback_ch2 = 0;
-                error_counter_ch2 = 0;
-                comm_state++;
-            }
-                        
             if (!comms_timeout)
             {
-                error_counter_ch2++;
-                comm_state++;
+                if (it_was_feedback_ch)
+                    error_counter_ch2 = 0;
+                else
+                    error_counter_ch2++;
+
+                power_comm_state++;
             }            
             break;
 
         case ASK_CH3:
+            it_was_feedback_ch = 0;            
             Power_Send((const char *) "ch3 status\n");
-            comms_timeout = 100;
-            comm_state++;                        
+            comms_timeout = POWER_COMMS_TT;
+            power_comm_state++;                        
             break;
 
         case WAIT_ANSWER_CH3:
             //agrandar falta de comm
-            if (it_was_feedback_ch3)
-            {
-                it_was_feedback_ch3 = 0;
-                error_counter_ch3 = 0;
-                comm_state++;
-            }
-            
             if (!comms_timeout)
             {
-                error_counter_ch3++;
-                comm_state++;
+                if (it_was_feedback_ch)
+                    error_counter_ch3 = 0;
+                else
+                    error_counter_ch3++;
+
+                power_comm_state++;
             }            
             break;
 
@@ -234,9 +242,11 @@ void CommunicationStack (void)
             if (error_counter_ch3 > MAX_NO_COMM_ERRORS)
                 comms_messages |= COMM_NO_COMM_CH3;
 
+            power_comm_state = ASK_CH1;
             break;
             
         default:
+            power_comm_state = ASK_CH1;
             break;
     }
 }

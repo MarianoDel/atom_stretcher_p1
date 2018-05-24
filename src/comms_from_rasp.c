@@ -18,6 +18,7 @@
 #include "treatment.h"
 
 #include <string.h>
+#include <stdio.h>
 
 
 
@@ -281,94 +282,101 @@ void RaspBerry_Report_Errors (unsigned short * errors)
     //0x5N sobre corriente
     //N num de canal 1-4
 
+    char buff [20];
     unsigned short err = 0;
     unsigned short chn = 0;
 
-    err = *errors & 0x00F0;
-    chn = *errors & 0x0F00;
+    sprintf(buff, "0x%04x\r\n", *errors);
+    RPI_Send(buff);
+    
+    err = *errors & COMM_POWER_ERR_MASK;
+    chn = *errors & COMM_POWER_CHN_MASK;
 
-    switch (err)
+    
+    while (err | chn)
     {
+        switch (err)
+        {
         case COMM_ERROR_OVERCURRENT:
-            *errors &= ~COMM_ERROR_OVERCURRENT;
+            err &= ~COMM_ERROR_OVERCURRENT;
             if (chn == COMM_ERROR_IN_CH1)
             {
-                *errors &= ~COMM_ERROR_IN_CH1;
+                chn &= ~COMM_ERROR_IN_CH1;
                 RPI_Send("ERROR(0x51)\r\n");
             }
 
             if (chn == COMM_ERROR_IN_CH2)
             {
-                *errors &= ~COMM_ERROR_IN_CH2;
+                chn &= ~COMM_ERROR_IN_CH2;
                 RPI_Send("ERROR(0x52)\r\n");
             }
 
             if (chn == COMM_ERROR_IN_CH3)
             {
-                *errors &= ~COMM_ERROR_IN_CH3;
+                chn &= ~COMM_ERROR_IN_CH3;
                 RPI_Send("ERROR(0x53)\r\n");
             }            
             break;
 
         case COMM_ERROR_NO_CURRENT:
-            *errors &= ~COMM_ERROR_NO_CURRENT;
+            err &= ~COMM_ERROR_NO_CURRENT;
             if (chn == COMM_ERROR_IN_CH1)
             {
-                *errors &= ~COMM_ERROR_IN_CH1;
+                chn &= ~COMM_ERROR_IN_CH1;
                 RPI_Send("ERROR(0x21)\r\n");
             }
 
             if (chn == COMM_ERROR_IN_CH2)
             {
-                *errors &= ~COMM_ERROR_IN_CH2;
+                chn &= ~COMM_ERROR_IN_CH2;
                 RPI_Send("ERROR(0x22)\r\n");
             }
 
             if (chn == COMM_ERROR_IN_CH3)
             {
-                *errors &= ~COMM_ERROR_IN_CH3;
+                chn &= ~COMM_ERROR_IN_CH3;
                 RPI_Send("ERROR(0x23)\r\n");
             }                        
             break;
 
         case COMM_ERROR_SOFT_OVERCURRENT:
-            *errors &= ~COMM_ERROR_SOFT_OVERCURRENT;
+            err &= ~COMM_ERROR_SOFT_OVERCURRENT;
             if (chn == COMM_ERROR_IN_CH1)
             {
-                *errors &= ~COMM_ERROR_IN_CH1;
+                chn &= ~COMM_ERROR_IN_CH1;
                 RPI_Send("ERROR(0x51)\r\n");
             }
 
             if (chn == COMM_ERROR_IN_CH2)
             {
-                *errors &= ~COMM_ERROR_IN_CH2;
+                chn &= ~COMM_ERROR_IN_CH2;
                 RPI_Send("ERROR(0x52)\r\n");
             }
 
             if (chn == COMM_ERROR_IN_CH3)
             {
-                *errors &= ~COMM_ERROR_IN_CH3;
+                chn &= ~COMM_ERROR_IN_CH3;
                 RPI_Send("ERROR(0x53)\r\n");
             }                                    
             break;
 
         case COMM_ERROR_OVERTEMP:
-            *errors &= ~COMM_ERROR_OVERTEMP;
+            err &= ~COMM_ERROR_OVERTEMP;
             if (chn == COMM_ERROR_IN_CH1)
             {
-                *errors &= ~COMM_ERROR_IN_CH1;
+                chn &= ~COMM_ERROR_IN_CH1;
                 RPI_Send("ERROR(0x41)\r\n");
             }
 
             if (chn == COMM_ERROR_IN_CH2)
             {
-                *errors &= ~COMM_ERROR_IN_CH2;
+                chn &= ~COMM_ERROR_IN_CH2;
                 RPI_Send("ERROR(0x42)\r\n");
             }
 
             if (chn == COMM_ERROR_IN_CH3)
             {
-                *errors &= ~COMM_ERROR_IN_CH3;
+                chn &= ~COMM_ERROR_IN_CH3;
                 RPI_Send("ERROR(0x43)\r\n");
             }                                                
             break;
@@ -377,24 +385,28 @@ void RaspBerry_Report_Errors (unsigned short * errors)
             //debe ser falta de comunicacion
             if (chn == COMM_ERROR_IN_CH1)
             {
-                *errors &= ~COMM_ERROR_IN_CH1;
+                chn &= ~COMM_ERROR_IN_CH1;
                 RPI_Send("ERROR(0x11)\r\n");
             }
 
             if (chn == COMM_ERROR_IN_CH2)
             {
-                *errors &= ~COMM_ERROR_IN_CH2;
+                chn &= ~COMM_ERROR_IN_CH2;
                 RPI_Send("ERROR(0x12)\r\n");
             }
 
             if (chn == COMM_ERROR_IN_CH3)
             {
-                *errors &= ~COMM_ERROR_IN_CH3;
+                chn &= ~COMM_ERROR_IN_CH3;
                 RPI_Send("ERROR(0x13)\r\n");
             }                                                            
             break;
+        }
+
+        sprintf(buff, "err: 0x%04x chn: 0x%04x\r\n", err, chn);
+        RPI_Send(buff);
+
     }            
-            
 }
 
 static void SendAllConf (void)

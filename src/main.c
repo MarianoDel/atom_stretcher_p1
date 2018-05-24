@@ -170,6 +170,7 @@ int main(void)
 #endif
 
 #ifdef STRETCHER_P1_LIKE_F103
+    char buff [40];
     treatment_t main_state = TREATMENT_STANDBY;
 #endif
     
@@ -355,10 +356,12 @@ int main(void)
                 secs_end_treatment = TreatmentGetTime();
                 secs_in_treatment = 1;    //con 1 arranca el timer
                 secs_elapsed_up_to_now = 0;
+                PowerCommunicationStackReset();
                 main_state = TREATMENT_RUNNING;
                 break;
 
             case TREATMENT_RUNNING:
+                PowerCommunicationStack();    //me comunico con las potencias para conocer el estado
 
                 if (comms_messages & COMM_PAUSE_TREAT)
                 {
@@ -395,11 +398,12 @@ int main(void)
                     (comms_messages & COMM_NO_COMM_CH3))                    
                 {
                     PowerSendStop();
-                    while (comms_messages)
-                    {
-                        RaspBerry_Report_Errors(&comms_messages);
-                    }
+                    LED_ON;
+                    RaspBerry_Report_Errors(&comms_messages);
+                    LED_OFF;
                     main_state = TREATMENT_WITH_ERRORS;
+                    sprintf (buff, "treat err, msg: 0x%04x\r\n", comms_messages);
+                    RPI_Send(buff);
                 }
                 break;
 
@@ -425,6 +429,8 @@ int main(void)
                 break;
                 
             case TREATMENT_STOPPING:
+                sprintf (buff, "treat end, msg: 0x%04x\r\n", comms_messages);
+                RPI_Send(buff);
                 main_state = TREATMENT_STANDBY;
                 break;
 

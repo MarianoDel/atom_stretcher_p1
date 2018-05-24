@@ -24,7 +24,7 @@
 #define STRETCHER_P1_LIKE_F103
 
 //-------- Hardware resources for Type of Program ----------------
-#ifdef STRETCHER_P1
+#if defined STRETCHER_P1 || defined STRETCHER_P1_LIKE_F103
 #define USART_RX_PULL_UP    //se usa para comunicacion paralelo con las placas de canales
 #endif
 

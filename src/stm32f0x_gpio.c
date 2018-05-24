@@ -94,7 +94,7 @@ void GPIO_Config (void)
     temp &= 0xFFFCFFFF;
     temp |= 0x00020000;		//PA8 pull-down
 #endif
-#ifdef STRETCHER_P1
+#if defined STRETCHER_P1 || defined STRETCHER_P1_LIKE_F103
     temp &= 0xFFFFFF3F;
     temp |= 0x00000040;		//PA3 pull up RX USART2
 #endif
